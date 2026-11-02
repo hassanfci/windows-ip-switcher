@@ -25,3 +25,6 @@ Changing the active adapter IP can interrupt connectivity, especially on remote 
 
 ## Runtime dependencies
 Python 3 standard library only: tkinter, subprocess, ipaddress, urllib, etc. PyInstaller is only needed for packaging.
+
+## v3.1: Current IP display
+Click **Show Current IP** to open a separate resizable, scrollable configuration window. The main activity log is also larger and easier to read. Rebuild the EXE using Build_EXE.bat after pulling the latest source.
