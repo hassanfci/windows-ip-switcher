@@ -41,7 +41,7 @@ def check(d):
  return d
 class App:
  def __init__(self,root):
-  self.root=root;root.title("Windows IP Switcher v3.0");root.geometry("930x740");root.minsize(780,640)
+  self.root=root;root.title("Windows IP Switcher v3.1");root.geometry("990x850");root.minsize(800,700)
   root.configure(bg="#101827")
   self.profile=tk.StringVar();self.adapter=tk.StringVar();self.mode=tk.StringVar(value="static")
   self.name=tk.StringVar();self.values={k:tk.StringVar() for k in ("ip","mask","gateway","dns1","dns2")}
@@ -78,7 +78,7 @@ class App:
    f=row(label);v=self.name if k=="name" else self.values[k]
    e=ttk.Entry(f,textvariable=v);e.pack(side="left",fill="x",expand=True);self.entries[k]=e
   f=ttk.Frame(frame);f.pack(fill="x",pady=15)
-  for title,fn in [("Save / Update Profile",self.save),("Apply Static IP",self.static),("Switch to DHCP",self.dhcp),("Show Current IP",self.current)]:
+  for title,fn in [("Save / Update Profile",self.save),("Apply Static IP",self.static),("Switch to DHCP",self.dhcp),("Show Current IP",lambda:self.current(show_window=True))]:
    ttk.Button(f,text=title,command=fn).pack(side="left",padx=(0,7))
   f=row("Public IPv4")
   ttk.Label(f,textvariable=self.public).pack(side="left",fill="x",expand=True)
@@ -87,8 +87,14 @@ class App:
   ttk.Button(f,text="Copy IP",command=self.copy).pack(side="left")
   ttk.Label(frame,text="Public IP is checked via HTTPS. CGNAT/VPN may change the observed address.").pack(anchor="w")
   ttk.Label(frame,textvariable=self.status).pack(anchor="w",pady=8)
-  self.log=tk.Text(frame,height=10,bg="#19263a",fg="#edf3fa",font=("Consolas",9),wrap="word")
-  self.log.pack(fill="both",expand=True)
+  ttk.Label(frame,text="Activity log / current adapter details").pack(anchor="w")
+  log_frame=ttk.Frame(frame)
+  log_frame.pack(fill="both",expand=True,pady=(4,0))
+  self.log=tk.Text(log_frame,height=13,bg="#19263a",fg="#edf3fa",font=("Consolas",11),wrap="none")
+  self.log.pack(side="left",fill="both",expand=True)
+  scrollbar=ttk.Scrollbar(log_frame,orient="vertical",command=self.log.yview)
+  scrollbar.pack(side="right",fill="y")
+  self.log.configure(yscrollcommand=scrollbar.set)
   self.refresh_adapters();self.refresh_profiles();root.after(100,self.current)
  def output(self,msg):
   self.log.insert("end",msg+"\n");self.log.see("end")
@@ -166,11 +172,39 @@ class App:
   if not messagebox.askyesno("DHCP",f"Enable automatic IP and DNS on {a}?"):return
   b=["netsh","interface","ipv4"]
   self.execute([b+["set","address",f"name={a}","source=dhcp"],b+["set","dnsservers",f"name={a}","source=dhcp"]],"DHCP enabled")
- def current(self):
+ def current(self,show_window=False):
   if not self.adapter.get():return
   try:
    p=command(["netsh","interface","ipv4","show","config",f"name={self.adapter.get()}"])
-   self.output("--- Current configuration ---\n"+(p.stdout or p.stderr))
+   details=(p.stdout or p.stderr or "No configuration returned").strip()
+   self.output("--- Current configuration for "+self.adapter.get()+" ---\\n"+details)
+   if show_window:
+    win=tk.Toplevel(self.root)
+    win.title("Current IP Configuration - "+self.adapter.get())
+    win.geometry("860x560")
+    win.minsize(600,380)
+    win.configure(bg="#101827")
+    win.transient(self.root)
+    head=ttk.Frame(win,padding=14)
+    head.pack(fill="x")
+    ttk.Label(head,text="Adapter: "+self.adapter.get(),font=("Segoe UI Semibold",16)).pack(anchor="w")
+    ttk.Label(head,text="IPv4 Configuration (read-only)").pack(anchor="w",pady=(5,0))
+    body=ttk.Frame(win,padding=(14,0,14,14))
+    body.pack(fill="both",expand=True)
+    output=tk.Text(body,bg="#19263a",fg="#f1f5ff",font=("Consolas",12),wrap="none")
+    output.pack(side="left",fill="both",expand=True)
+    vbar=ttk.Scrollbar(body,orient="vertical",command=output.yview)
+    vbar.pack(side="right",fill="y")
+    output.configure(yscrollcommand=vbar.set)
+    output.insert("1.0",details)
+    output.configure(state="disabled")
+    buttons=ttk.Frame(win,padding=(14,0,14,14))
+    buttons.pack(fill="x")
+    def copy_config():
+     win.clipboard_clear()
+     win.clipboard_append(details)
+    ttk.Button(buttons,text="Copy Configuration",command=copy_config).pack(side="left")
+    ttk.Button(buttons,text="Close",command=win.destroy).pack(side="right")
   except Exception as e:self.output(str(e))
  def getpublic(self):
   if self.busy:return
