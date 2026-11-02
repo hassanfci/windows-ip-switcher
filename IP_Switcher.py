@@ -177,7 +177,7 @@ class App:
   try:
    p=command(["netsh","interface","ipv4","show","config",f"name={self.adapter.get()}"])
    details=(p.stdout or p.stderr or "No configuration returned").strip()
-   self.output("--- Current configuration for "+self.adapter.get()+" ---\\n"+details)
+   self.output("--- Current configuration for "+self.adapter.get()+" ---\n"+details)
    if show_window:
     win=tk.Toplevel(self.root)
     win.title("Current IP Configuration - "+self.adapter.get())
